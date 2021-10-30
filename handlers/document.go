@@ -138,6 +138,11 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	// convert timestamp to int64
 	ts, _ := strconv.ParseInt(dcReq.Timestamp, 10, 64)
 
+	// update DocID on Attributes
+	for _, a := range dcReq.Attrs {
+		a.DocumentID = dcReq.Id
+	}
+
 	newDoc := models.Document{
 		ID:         dcReq.Id,
 		Attributes: dcReq.Attrs,
