@@ -15,10 +15,13 @@ import (
 
 func main() {
 	db, err := gorm.Open("sqlite3", "msg.db")
-	db.LogMode(true)
 	if err != nil {
 		log.Fatal(err)
 	}
+	// turn on foreign keys for SQLite
+	db.Exec("PRAGMA foreign_keys = ON;")
+	db.LogMode(true)
+
 	defer db.Close()
 	// init models
 	db.AutoMigrate(models.Document{}, models.Attribute{})
