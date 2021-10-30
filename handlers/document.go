@@ -221,15 +221,17 @@ func (dc *DocumentController) SearchDocumentHandler(c *gin.Context) {
 	stime, _ := convertTimestampStr(startTs)
 	etime, _ := convertTimestampStr(endTs)
 
-	if err := dc.Db.("Attributes").Find(&models.Document{}).
+	err := dc.Db.Model(&models.Document{}).Select("Documents.ID").
+		Joins("join Attributes on Documents.ID = Attributes.id").
 		Where("timestamp >= ? AND timestamp <= ?", *stime, *etime).
 		Where("Attributes.key = ? AND Attributes.value = ?", key, value).
-		Limit(constants.MaxRecordsReturn).Find(&docids).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
-			c.JSON(http.StatusNotFound, documentSearchResponse{})
-		} else {
-			c.JSON(http.StatusInternalServerError, documentSearchResponse{})
-		}
+		Limit(constants.MaxRecordsReturn).
+		Scan(&docids).Error
+
+	if gorm.IsRecordNotFoundError(err) {
+		c.JSON(http.StatusNotFound, documentSearchResponse{})
+	} else {
+		c.JSON(http.StatusInternalServerError, documentSearchResponse{})
 	}
 
 	c.JSON(http.StatusOK, documentSearchResponse{
