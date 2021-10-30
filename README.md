@@ -23,10 +23,24 @@ Objects will have the following fields:
 
 We will expose an REST API for CRUD operations.
 
+### Retrieve Object
+
+```text
+GET /mydata/<id>
+```
+
+Return an object with the provided uuid.
+
+Response codes:
+
+- 200 for non-empty response
+- 400 invalid request params
+- 404 no record found
+
 ### Search Objects
 
 ```text
-/mydata/<start_timestamp>/<end_timestamp>/<key>/<value>
+GET /mydata/<start_timestamp>/<end_timestamp>/<key>/<value>
 ```
 
 Return a list of object UUID satisfying the criteria:
@@ -38,13 +52,15 @@ Response codes:
 
 - 200 for non-empty response
 - 400 invalid request params
-- 201 for no records found
+- 404 for no records found
 
 **Response limit is capped at 500.**
 
 ### Create objects
 
+```text
 POST /mydata
+```
 
 This will persist/update a record in the store.
 
@@ -68,3 +84,15 @@ Request payload:
 "timestamp":"unix-epoch timestamp"
 }
 ```
+
+## Stack
+
+1. GoLang
+2. Gin/Gonic
+3. GORM
+4. Sqlite/Postgres
+
+## Configuration Params
+
+1. Number of worker threads
+2. Backend conn string
