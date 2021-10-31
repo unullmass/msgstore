@@ -55,6 +55,7 @@ var (
 	ErrDocSearchFailed   = errors.New("document search failed")
 	ErrDcrParseFailed    = errors.New("document create request parse failed")
 	CreateSuccess        = "created"
+	StatusOk             = "ok"
 )
 
 func convertTimestampStr(ts string) (*time.Time, error) {
@@ -81,11 +82,8 @@ func convertTimestampStr(ts string) (*time.Time, error) {
 	return &t, nil
 }
 
-func validateSearchParams(startTs, endTs, key, value string) error {
-	if _, err := convertTimestampStr(startTs); err != nil {
-		return err
-	}
-	if _, err := convertTimestampStr(endTs); err != nil {
+func validateSearchParams(ts, key, value string) error {
+	if _, err := convertTimestampStr(ts); err != nil {
 		return err
 	}
 	if err := models.ValidateAttribute(key, value); err != nil {
@@ -140,7 +138,9 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 
 	// update DocID on Attributes
 	for _, a := range dcReq.Attrs {
-		a.DocumentID = dcReq.Id
+		if a.DocumentID == uuid.Nil {
+			a.DocumentID = dcReq.Id
+		}
 	}
 
 	newDoc := models.Document{
@@ -166,7 +166,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 	doc := models.Document{}
 
-	err := db.First(&doc, "id = ?", id).Error
+	err := db.Preload("Attributes").First(&doc, "id = ?", id).Error
 
 	if err != nil {
 		return nil, err
@@ -204,6 +204,8 @@ func (dc *DocumentController) RetrieveDocumentHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, retrieveDocumentResponse{
 		Id:        &doc.ID,
 		Timestamp: &ts,
+		Attrs:     doc.Attributes,
+		Status:    StatusOk,
 	})
 }
 
@@ -211,31 +213,31 @@ func (dc *DocumentController) SearchDocumentHandler(c *gin.Context) {
 	docids := []uuid.UUID{}
 
 	// parse request params
-	startTs, _ := c.Params.Get(constants.StartTsPath)
-	endTs, _ := c.Params.Get(constants.EndTsPath)
+	ts, _ := c.Params.Get(constants.TsPath)
 	key, _ := c.Params.Get(constants.KeyPath)
 	value, _ := c.Params.Get(constants.ValuePath)
 
-	if err := validateSearchParams(startTs, endTs, key, value); err != nil {
+	if err := validateSearchParams(ts, key, value); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 	}
 
 	// convert timestamps
-	stime, _ := convertTimestampStr(startTs)
-	etime, _ := convertTimestampStr(endTs)
+	ttime, _ := convertTimestampStr(ts)
 
 	err := dc.Db.Model(&models.Document{}).Select("Documents.ID").
 		Joins("join Attributes on Documents.ID = Attributes.id").
-		Where("timestamp >= ? AND timestamp <= ?", *stime, *etime).
+		Where("timestamp = ?", *ttime).
 		Where("Attributes.key = ? AND Attributes.value = ?", key, value).
 		Limit(constants.MaxRecordsReturn).
 		Scan(&docids).Error
 
-	if gorm.IsRecordNotFoundError(err) {
+	if len(docids) == 0 {
 		c.JSON(http.StatusNotFound, documentSearchResponse{})
-	} else {
+	}
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, documentSearchResponse{})
 	}
 

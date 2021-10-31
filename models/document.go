@@ -10,6 +10,6 @@ import (
 // that comprises one-or more key-value pairs along with temporal data
 type Document struct {
 	ID         uuid.UUID   `gorm:"primary_key;type:uuid"`
-	Attributes []Attribute `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Attributes []Attribute 
 	Timestamp  time.Time   `gorm:"index:idx_ts"`
 }

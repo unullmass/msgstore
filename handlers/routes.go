@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	fullSearchPath = fmt.Sprintf("%s/:%s/:%s/:%s/:%s", constants.RootPrefix, constants.StartTsPath, constants.EndTsPath, constants.KeyPath, constants.ValuePath)
+	fullSearchPath = fmt.Sprintf("%s/:%s/:%s/:%s", constants.RootPrefix, constants.TsPath, constants.KeyPath, constants.ValuePath)
 	// searchByTimestamp  = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
 	// searchByKey        = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
 	// searchByValue      = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
 	// searchByKeyValue   = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
-	retrievePath       = fmt.Sprintf("%s/:%s", constants.RootPrefix, constants.DocIdPath)
+	retrievePath       = fmt.Sprintf("%s/%s/:%s", constants.RootPrefix, constants.DocPath, constants.DocIdPath)
 	createDocumentPath = constants.RootPrefix
 
 	dc *DocumentController
@@ -26,7 +26,7 @@ func setDocRoutes(r *gin.Engine, db *gorm.DB) {
 	}
 	r.POST(createDocumentPath, dc.NewDocumentHandler)
 	r.GET(fullSearchPath, dc.SearchDocumentHandler)
-	//r.GET(retrievePath, dc.RetrieveDocumentHandler)
+	r.GET(retrievePath, dc.RetrieveDocumentHandler)
 }
 
 // SetRoutes sets routes for all backend APIs
