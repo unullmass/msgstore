@@ -111,7 +111,7 @@ func main() {
 				}
 
 				if dcrsp.Id == nil {
-					log.Default().Printf("Null ID\n", err)
+					log.Default().Print("Null ID\n", err)
 					return
 				}
 
