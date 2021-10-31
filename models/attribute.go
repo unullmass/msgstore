@@ -15,8 +15,8 @@ const (
 // upto `maxFieldLength` chars in length
 type Attribute struct {
 	ID         uuid.UUID `gorm:"primary_key;type:uuid"`
-	Key        string
-	Value      string
+	Key        string    `gorm:"index:idx_key"`
+	Value      string    `gorm:"index:idx_val"`
 	DocumentID uuid.UUID
 }
 

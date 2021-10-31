@@ -187,15 +187,9 @@ func (dc *DocumentController) RetrieveDocumentHandler(c *gin.Context) {
 
 	doc, err := RetrieveDocument(id, dc.Db)
 	if err != nil {
-		if gorm.IsRecordNotFoundError(err) {
-			c.JSON(http.StatusNotFound, retrieveDocumentResponse{
-				Status: ErrDocNotFound.Error(),
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, retrieveDocumentResponse{
-				Status: ErrDocNotFound.Error(),
-			})
-		}
+		c.JSON(http.StatusInternalServerError, retrieveDocumentResponse{
+			Status: ErrDocNotFound.Error(),
+		})
 		return
 	}
 
@@ -210,7 +204,6 @@ func (dc *DocumentController) RetrieveDocumentHandler(c *gin.Context) {
 }
 
 func (dc *DocumentController) SearchDocumentHandler(c *gin.Context) {
-	docids := []uuid.UUID{}
 
 	// parse request params
 	ts, _ := c.Params.Get(constants.TsPath)
@@ -226,15 +219,30 @@ func (dc *DocumentController) SearchDocumentHandler(c *gin.Context) {
 	// convert timestamps
 	ttime, _ := convertTimestampStr(ts)
 
-	err := dc.Db.Model(&models.Document{}).Select("Documents.ID").
-		Joins("join Attributes on Documents.ID = Attributes.id").
-		Where("timestamp = ?", *ttime).
-		Where("Attributes.key = ? AND Attributes.value = ?", key, value).
-		Limit(constants.MaxRecordsReturn).
-		Scan(&docids).Error
+	docids := []uuid.UUID{}
 
-	if len(docids) == 0 {
-		c.JSON(http.StatusNotFound, documentSearchResponse{})
+	rows, err := dc.Db.Model(&models.Document{}).Select("Documents.ID").
+		Joins("JOIN Attributes on Documents.ID = Attributes.document_id").
+		Where("Documents.timestamp = ?", *ttime).
+		Where("Attributes.key = ? AND Attributes.value = ?", key, value).
+		Limit(constants.MaxRecordsReturn).Rows()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+		}
+		docids = append(docids, id)
 	}
 
 	if err != nil {

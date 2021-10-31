@@ -3,7 +3,7 @@ package constants
 // routing
 const (
 	RootPrefix  = "/mydata"
-	DocPath = "document"
+	DocPath     = "document"
 	DocIdPath   = "docid"
 	StartTsPath = "startTimestamp"
 	EndTsPath   = "endTimestamp"

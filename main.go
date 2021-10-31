@@ -10,17 +10,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	db, err := gorm.Open("sqlite3", "msg.db")
+	//dsn := "host=localhost user=root password=mypassword123 dbname=msgstore port=5432 sslmode=disable"
+	//dsn := "host=localhost user=postgres password=mypassword123 dbname=msgstore port=5432 sslmode=disable"
+	dsn := "postgres://postgres:mypassword123@localhost:5432/msgstore?sslmode=disable"
+	db, err := gorm.Open("postgres", dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// turn on foreign keys for SQLite
-	db.Exec("PRAGMA foreign_keys = ON;")
-	db.LogMode(true)
+	//db.DB().SetMaxIdleConns(500)
+	//db.DB().SetMaxOpenConns(1000)
+
+	//db.LogMode(true)
 
 	defer db.Close()
 	// init models
