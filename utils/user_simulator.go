@@ -25,7 +25,7 @@ var (
 const (
 	createUrl       = "http://localhost:8080/mydata"
 	retrieveUrlBase = "http://localhost:8080/mydata/document"
-	maxBurst        = 50
+	maxBurst        = 10
 )
 
 // documentCreateRequest is used to hold the unmarshalled DocumentCreate request payload
@@ -93,51 +93,56 @@ func generateRandomAttrs() []models.Attribute {
 
 func main() {
 
-	n := r.Intn(10000000)
+	n := r.Intn(10000)
 	log.Default().Printf("Generating %d new records\n", n)
 	burstCount := 0
 	for i := 0; i < n; i++ {
-
 		if burstCount < maxBurst {
 			createWg.Add(1)
-
+			burstCount++
 			go func() {
 				defer createWg.Done()
-				var dcrsp documentCreateResponse
-
-				DoCreate(&dcrsp)
 				burstCount++
-				if dcrsp.Status == "created" {
-					// retrieve document
-					var docRetRsp retrieveDocumentResponse
-					DoRetrieve(*dcrsp.Id, &docRetRsp)
 
-					if docRetRsp.Status != "ok" {
-						log.Default().Printf("%+v\n", docRetRsp.Status)
-						return
-					}
-
-					// perform a search to validate create
-					var dsreq documentSearchRequest
-					var dsresp documentSearchResponse
-					dsreq.Timestamp = fmt.Sprint(docRetRsp.Timestamp)
-					dsreq.Key = docRetRsp.Attrs[0].Key
-					dsreq.Value = docRetRsp.Attrs[0].Value
-					DoSearch(&dsreq, &dsresp)
-					log.Default().Printf("Search returned %d records\n", len(dsresp.Docs))
-
+				dcrsp, err := DoCreate()
+				if err != nil {
+					log.Default().Printf("%+v\n", err)
+					return
 				}
+
+				if dcrsp.Id == nil {
+					log.Default().Printf("Null ID\n", err)
+					return
+				}
+
+				// retrieve document
+				docRetRsp, err := DoRetrieve(*dcrsp.Id)
+				if err != nil {
+					log.Default().Printf("%+v\n", err)
+					return
+				}
+
+				// perform a search to validate create
+				var dsreq documentSearchRequest
+				dsreq.Timestamp = fmt.Sprint(*docRetRsp.Timestamp)
+				dsreq.Key = docRetRsp.Attrs[0].Key
+				dsreq.Value = docRetRsp.Attrs[0].Value
+				dsresp, err := DoSearch(&dsreq)
+				if err != nil {
+					log.Default().Printf("%+v\n", err)
+					return
+				}
+				log.Default().Printf("Search returned %d records\n", len(dsresp.Docs))
 			}()
 		} else {
 			createWg.Wait()
 			burstCount = 0
 		}
-
 	}
 	createWg.Wait()
 }
 
-func DoRetrieve(id uuid.UUID, drresp *retrieveDocumentResponse) {
+func DoRetrieve(id uuid.UUID) (*retrieveDocumentResponse, error) {
 	retrieveUrl := fmt.Sprintf("%s/%s", retrieveUrlBase, id)
 	c := http.DefaultClient
 	resp, err := c.Get(retrieveUrl)
@@ -145,17 +150,16 @@ func DoRetrieve(id uuid.UUID, drresp *retrieveDocumentResponse) {
 
 	if err != nil {
 		log.Default().Printf("Retrieve Error: %+v\n", err)
-		drresp.Status = err.Error()
-		return
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Default().Printf("Retrieve Error: %+v\n", err)
-		drresp.Status = err.Error()
-		return
+		return nil, err
 	}
+	var drresp retrieveDocumentResponse
 	err = json.Unmarshal(body, &drresp)
 	if err != nil {
 		log.Default().Printf("Retrieve Error: %+v\n", err)
@@ -163,9 +167,10 @@ func DoRetrieve(id uuid.UUID, drresp *retrieveDocumentResponse) {
 	}
 
 	log.Default().Printf("Retrieve Response: %+v\n", drresp)
+	return &drresp, nil
 }
 
-func DoCreate(dcrsp *documentCreateResponse) {
+func DoCreate() (*documentCreateResponse, error) {
 	dcr := documentCreateRequest{
 		Id:        uuid.New(),
 		Attrs:     generateRandomAttrs(),
@@ -178,23 +183,28 @@ func DoCreate(dcrsp *documentCreateResponse) {
 	resp, err := c.Post(createUrl, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		log.Default().Printf("Create Error: %+v\n", err)
-		dcrsp = nil
-		return
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Default().Printf("Create Error: %+v\n", err)
-		dcrsp = nil
-		return
+		return nil, err
 	}
-	json.Unmarshal(body, &dcrsp)
+	dcresp := documentCreateResponse{}
+	err = json.Unmarshal(body, &dcresp)
+	if err != nil {
+		log.Default().Printf("Create Error: %+v\n", err)
+		return nil, err
+	}
 
 	//log.Default().Printf("Response: %+v\n", dcrsp)
+	return &dcresp, nil
 }
 
-func DoSearch(docSearchReq *documentSearchRequest, docSearchResp *documentSearchResponse) {
+func DoSearch(docSearchReq *documentSearchRequest) (*documentSearchResponse, error) {
+	var docSearchResp documentSearchResponse
 	searchUrl := fmt.Sprintf("%s/%s/%s/%s", createUrl, docSearchReq.Timestamp, docSearchReq.Key, docSearchReq.Value)
 	c := http.DefaultClient
 	resp, err := c.Get(searchUrl)
@@ -202,20 +212,21 @@ func DoSearch(docSearchReq *documentSearchRequest, docSearchResp *documentSearch
 
 	if err != nil {
 		log.Default().Printf("Search Error: %+v\n", err)
-		return
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Default().Printf("Search Error: %+v\n", err)
-		return
+		return nil, err
 	}
 	err = json.Unmarshal(body, &docSearchResp)
 	if err != nil {
 		log.Default().Printf("Search Error: %+v\n", err)
-		return
+		return nil, err
 	}
 
 	//log.Default().Printf("Response: %+v\n", dcrsp)
+	return &docSearchResp, nil
 }
