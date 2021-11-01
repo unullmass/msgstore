@@ -25,21 +25,21 @@ type documentCreateRequest struct {
 
 // documentCreateResponse is used to hold the response payload for Create Document flow
 type documentCreateResponse struct {
-	Id     *uuid.UUID
+	Id     *uuid.UUID `json:"id,omitempty"`
 	Status string
 }
 
 // retrieveDocumentResponse is used to hold the retrieve document response payload
 type retrieveDocumentResponse struct {
-	Id        *uuid.UUID
-	Attrs     []models.Attribute
-	Timestamp *int64
+	Id        *uuid.UUID         `json:"id,omitempty"`
+	Attrs     []models.Attribute `json:"attrs,omitempty"`
+	Timestamp *int64             `json:"timestamp,omitempty"`
 	Status    string
 }
 
 // documentSearchResponse is used to hold the search document response payload
 type documentSearchResponse struct {
-	Docs []uuid.UUID
+	Docs []uuid.UUID `json:"docs,omitempty"`
 }
 
 var (
@@ -137,9 +137,12 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	ts, _ := strconv.ParseInt(dcReq.Timestamp, 10, 64)
 
 	// update DocID on Attributes
-	for _, a := range dcReq.Attrs {
-		if a.DocumentID == uuid.Nil {
-			a.DocumentID = dcReq.Id
+	for i := range dcReq.Attrs {
+		if dcReq.Attrs[i].ID == uuid.Nil {
+			dcReq.Attrs[i].ID = uuid.New()
+		}
+		if dcReq.Attrs[i].DocumentID == uuid.Nil {
+			dcReq.Attrs[i].DocumentID = dcReq.Id
 		}
 	}
 
