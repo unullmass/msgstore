@@ -3,7 +3,7 @@ package constants
 // routing
 const (
 	RootPrefix  = "/mydata"
-	DocPath     = "document"
+	DocPath     = "documents"
 	DocIdPath   = "docid"
 	StartTsPath = "startTimestamp"
 	EndTsPath   = "endTimestamp"
@@ -15,6 +15,7 @@ const (
 //
 const (
 	DefaultMaxRecordsReturn = 500
+	DefaultCacheTimeMins = 5
 )
 
 // DB
