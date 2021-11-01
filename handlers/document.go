@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -90,29 +92,34 @@ func (dc documentCreateRequest) IsValid() error {
 	if len(dc.Attrs) == 0 {
 		return ErrEmptyAttrsList
 	}
-	if dc.Id == uuid.Nil {
-		return ErrInvalidId
-	}
-	if _, err := convertTimestampStr(dc.Timestamp); err != nil {
-		return ErrInvalidTimestamp
-	}
 
 	return nil
 }
 
 type DocumentController struct {
 	Db           *gorm.DB
-	WriteRowChan chan *models.Document
+	WriteRowChan *chan *models.Document
 }
 
 func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	var dcReq documentCreateRequest
+	var err error
 	if err := c.BindJSON(&dcReq); err != nil {
 		c.JSON(http.StatusBadRequest, documentCreateResponse{
 			Status: ErrDcrParseFailed.Error(),
 		})
 		return
 	}
+
+	p := strings.Split(c.Request.URL.Path, "/")
+	dcReq.Id, err = uuid.Parse(p[len(p)-1])
+	if err != nil {
+		c.JSON(http.StatusBadRequest, documentCreateResponse{
+			Status: ErrInvalidId.Error(),
+		})
+	}
+
+	dcReq.Timestamp = fmt.Sprint(time.Now().Unix())
 
 	// validate req
 	if err := dcReq.IsValid(); err != nil {
@@ -122,7 +129,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := RetrieveDocument(dcReq.Id, dc.Db)
+	_, err = RetrieveDocument(dcReq.Id, dc.Db)
 	// we need to change the UUID since to prevent overwrite
 	if err == nil {
 		dcReq.Id = uuid.New()
@@ -148,7 +155,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	}
 
 	// put to write chan
-	dc.WriteRowChan <- &newDoc
+	*dc.WriteRowChan <- &newDoc
 
 	c.JSON(http.StatusCreated, documentCreateResponse{
 		Id:     &newDoc.ID,

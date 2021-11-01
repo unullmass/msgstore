@@ -128,7 +128,7 @@ func main() {
 		)
 	}))
 	r.Use(gin.Recovery())
-	handlers.SetRoutes(r, db)
+	handlers.SetRoutes(r, db, &ic)
 	r.Run()
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
