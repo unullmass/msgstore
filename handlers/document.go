@@ -58,6 +58,11 @@ var (
 	StatusOk             = "ok"
 )
 
+const (
+	decBase  = 10
+	lenInt64 = 64
+)
+
 func convertTimestampStr(ts string) (*time.Time, error) {
 	/* 	// convert string to big int
 	   	b, ok := big.NewInt(0).SetString(ts, 10)
@@ -70,13 +75,11 @@ func convertTimestampStr(ts string) (*time.Time, error) {
 	   		return ErrInvalidTimestamp
 	   	} */
 	// convert timestamp to int64
-	tint64, err := strconv.ParseInt(ts, 10, 64)
-	if err != nil {
+	tint64, err := strconv.ParseInt(ts, decBase, lenInt64)
+	if err != nil || tint64 < 0 {
 		return nil, ErrInvalidTimestamp
 	}
-	if tint64 < 0 {
-		return nil, ErrInvalidTimestamp
-	}
+
 	t := time.Unix(tint64, 0)
 
 	return &t, nil
@@ -228,7 +231,7 @@ func (dc *DocumentController) SearchDocumentHandler(c *gin.Context) {
 		Joins("JOIN Attributes on Documents.ID = Attributes.document_id").
 		Where("Documents.timestamp = ?", *ttime).
 		Where("Attributes.key = ? AND Attributes.value = ?", key, value).
-		Limit(constants.MaxRecordsReturn).Rows()
+		Limit(constants.DefaultMaxRecordsReturn).Rows()
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

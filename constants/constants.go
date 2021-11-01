@@ -14,5 +14,17 @@ const (
 
 //
 const (
-	MaxRecordsReturn = 500
+	DefaultMaxRecordsReturn = 500
+)
+
+// DB
+const (
+	DbType         = "postgres"
+	DbDSNBase      = DbType + "://"
+	DbHostEnv      = "DB_HOST"
+	DbUserEnv      = "DB_USER"
+	DbPassEnv      = "DB_PASSWORD"
+	DbSchemaEnv    = "DB_SCHEMA"
+	DbPortEnv      = "DB_PORT"
+	DbInsecureConn = "sslmode=disable"
 )

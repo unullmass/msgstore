@@ -99,3 +99,18 @@ Successful requests rate:               44 hits/sec
 Read throughput:                      9400 bytes/sec
 Write throughput:                    31974 bytes/sec
 Test time:                              60 sec
+
+
+$ go run ../gobench/gobench.go -c 400   -t 60  -d test/createdoc.json -u http://localhost:8080/mydata -k=false -tr 20000
+Dispatching 400 clients
+Waiting for results...
+
+Requests:                             2485 hits
+Successful requests:                  2485 hits
+Network failed:                          0 hits
+Bad requests failed (!2xx):              0 hits
+Successful requests rate:               41 hits/sec
+Read throughput:                      8738 bytes/sec
+Write throughput:                    32119 bytes/sec
+Test time:                              60 sec
+
