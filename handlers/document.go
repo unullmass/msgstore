@@ -1,19 +1,26 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/eko/gocache/v2/store"
 	"github.com/pkg/errors"
 
+	"github.com/unullmass/msg-store/cache"
 	"github.com/unullmass/msg-store/constants"
 	"github.com/unullmass/msg-store/models"
+
+	"context"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
+
+var ctx context.Context
 
 // documentCreateRequest is used to hold the unmarshalled DocumentCreate request payload
 // The fields extracted from this are passed on to the Document model
@@ -163,6 +170,8 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
+	_ = cache.Cache.Set(ctx, fmt.Sprintf("d_%d", dcReq.Id.String()), newDoc, nil)
+
 	c.JSON(http.StatusCreated, documentCreateResponse{
 		Id:     &newDoc.ID,
 		Status: CreateSuccess,
@@ -170,12 +179,17 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 }
 
 func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
-	doc := models.Document{}
+	var doc models.Document
 
-	err := db.Preload("Attributes").First(&doc, "id = ?", id).Error
-
-	if err != nil {
-		return nil, err
+	// check if cached
+	d, err := cache.Cache.Get(ctx, fmt.Sprintf("d_%d", id.String()))
+	if err == nil {
+		doc = d.(models.Document)
+	} else { // fetch from DB
+		err := db.Preload("Attributes").First(&doc, "id = ?", id).Error
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &doc, nil
