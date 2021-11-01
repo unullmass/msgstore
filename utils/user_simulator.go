@@ -177,7 +177,7 @@ func DoCreate() (*documentCreateResponse, error) {
 		Attrs:     generateRandomAttrs(),
 		Timestamp: fmt.Sprint(time.Now().Unix()),
 	}
-	log.Default().Printf("Create Request: %+v\n")
+	log.Default().Printf("Create Request: \n")
 	json.NewEncoder(os.Stdout).Encode(dcr)
 
 	reqBytes, _ := json.Marshal(dcr)
