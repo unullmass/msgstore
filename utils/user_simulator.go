@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 
 	"time"
@@ -93,7 +94,7 @@ func generateRandomAttrs() []models.Attribute {
 
 func main() {
 
-	n := r.Intn(10000)
+	n := r.Intn(10)
 	log.Default().Printf("Generating %d new records\n", n)
 	burstCount := 0
 	for i := 0; i < n; i++ {
@@ -176,7 +177,8 @@ func DoCreate() (*documentCreateResponse, error) {
 		Attrs:     generateRandomAttrs(),
 		Timestamp: fmt.Sprint(time.Now().Unix()),
 	}
-	log.Default().Printf("Create Request: %+v\n", dcr)
+	log.Default().Printf("Create Request: %+v\n")
+	json.NewEncoder(os.Stdout).Encode(dcr)
 
 	reqBytes, _ := json.Marshal(dcr)
 	c := http.DefaultClient
@@ -199,7 +201,7 @@ func DoCreate() (*documentCreateResponse, error) {
 		return nil, err
 	}
 
-	//log.Default().Printf("Response: %+v\n", dcrsp)
+	log.Default().Printf("Response: %+v\n", dcresp)
 	return &dcresp, nil
 }
 
