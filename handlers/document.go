@@ -170,12 +170,13 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	_ = cache.Cache.Set(ctx, fmt.Sprintf("d_%d", dcReq.Id.String()), newDoc, nil)
-
 	c.JSON(http.StatusCreated, documentCreateResponse{
 		Id:     &newDoc.ID,
 		Status: CreateSuccess,
 	})
+
+	// cache result
+	_ = cache.Cache.Set(ctx, newDoc.ID, newDoc, nil)
 }
 
 func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
@@ -190,6 +191,8 @@ func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 		if err != nil {
 			return nil, err
 		}
+		// cache result
+		_ = cache.Cache.Set(ctx, doc.ID, doc, nil)
 	}
 
 	return &doc, nil
