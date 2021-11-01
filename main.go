@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,7 +42,7 @@ func checkVarFound(myvar *string, paramName string) bool {
 	return true
 }
 
-func FlushAllInsertsToDB(db *gorm.DB, insertChan chan *models.Document, quit chan struct{}) {
+func FlushAllInsertsToDB(db *gorm.DB, insertChan chan *models.Document, quit chan os.Signal) {
 	retryChan := make(chan *models.Document)
 
 	for {
@@ -104,7 +106,7 @@ func main() {
 	db.AutoMigrate(models.Document{}, models.Attribute{})
 
 	ic := make(chan *models.Document)
-	quit := make(chan struct{})
+	quit := make(chan os.Signal)
 	go FlushAllInsertsToDB(db, ic, quit)
 
 	r := gin.New()
@@ -128,5 +130,8 @@ func main() {
 	r.Use(gin.Recovery())
 	handlers.SetRoutes(r, db)
 	r.Run()
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
 	close(quit)
 }
