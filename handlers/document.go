@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/eko/gocache/v2/store"
 	"github.com/pkg/errors"
 
 	"github.com/unullmass/msg-store/cache"
@@ -19,8 +17,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
-
-var ctx context.Context
 
 // documentCreateRequest is used to hold the unmarshalled DocumentCreate request payload
 // The fields extracted from this are passed on to the Document model
@@ -117,7 +113,8 @@ func (dc documentCreateRequest) IsValid() error {
 }
 
 type DocumentController struct {
-	Db *gorm.DB
+	Ctx context.Context
+	Db  *gorm.DB
 }
 
 func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
@@ -137,7 +134,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := RetrieveDocument(dcReq.Id, dc.Db)
+	_, err := RetrieveDocument(dc.Ctx, dcReq.Id, dc.Db)
 	// we need to change the UUID since to prevent overwrite
 	if err == nil {
 		dcReq.Id = uuid.New()
@@ -176,14 +173,14 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	})
 
 	// cache result
-	_ = cache.Cache.Set(ctx, newDoc.ID, newDoc, nil)
+	_ = cache.Cache.Set(dc.Ctx, newDoc.ID, newDoc, nil)
 }
 
-func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
+func RetrieveDocument(ctx context.Context, id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 	var doc models.Document
 
 	// check if cached
-	d, err := cache.Cache.Get(ctx, fmt.Sprintf("d_%d", id.String()))
+	d, err := cache.Cache.Get(ctx, id)
 	if err == nil {
 		doc = d.(models.Document)
 	} else { // fetch from DB
@@ -208,7 +205,7 @@ func (dc *DocumentController) RetrieveDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	doc, err := RetrieveDocument(id, dc.Db)
+	doc, err := RetrieveDocument(dc.Ctx, id, dc.Db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, retrieveDocumentResponse{
 			Status: ErrDocNotFound.Error(),

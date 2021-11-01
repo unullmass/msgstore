@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/unullmass/msg-store/cache"
 	"github.com/unullmass/msg-store/constants"
 	"github.com/unullmass/msg-store/handlers"
 	"github.com/unullmass/msg-store/models"
@@ -39,10 +41,14 @@ func checkVarFound(myvar *string, paramName string) bool {
 	return true
 }
 
+var ctx context.Context
+
 func main() {
 	var (
 		dbHost, dbUser, dbPass, dbSchema, dbPort string
 	)
+	ctx = context.Background()
+	defer cache.Cache.Clear(ctx)
 
 	if !checkVarFound(&dbHost, constants.DbHostEnv) ||
 		!checkVarFound(&dbUser, constants.DbUserEnv) ||
@@ -92,6 +98,6 @@ func main() {
 		)
 	}))
 	r.Use(gin.Recovery())
-	handlers.SetRoutes(r, db)
+	handlers.SetRoutes(ctx, r, db)
 	r.Run()
 }
