@@ -5,12 +5,12 @@ import (
 )
 
 var (
-	Cache *ristretto.Cache
+	ReadCache *ristretto.Cache
 )
 
 func init() {
 	var err error
-	Cache, err = ristretto.NewCache(&ristretto.Config{
+	ReadCache, err = ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1000,
 		MaxCost:     100,
 		BufferItems: 64,

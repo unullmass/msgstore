@@ -65,16 +65,6 @@ const (
 )
 
 func convertTimestampStr(ts string) (*time.Time, error) {
-	/* 	// convert string to big int
-	   	b, ok := big.NewInt(0).SetString(ts, 10)
-	   	if !ok {
-	   		return ErrInvalidTimestamp
-	   	}
-	   	// perform range check < 0 or > maxint64
-	   	z, _ := b.SetString(ts, 10)
-	   	if z.Cmp(big.NewInt(0)) < 0 || z.Cmp(big.NewInt(math.MaxInt64)) > 0 {
-	   		return ErrInvalidTimestamp
-	   	} */
 	// convert timestamp to int64
 	tint64, err := strconv.ParseInt(ts, decBase, lenInt64)
 	if err != nil || tint64 < 0 {
@@ -111,7 +101,8 @@ func (dc documentCreateRequest) IsValid() error {
 }
 
 type DocumentController struct {
-	Db *gorm.DB
+	Db           *gorm.DB
+	WriteRowChan chan *models.Document
 }
 
 func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
@@ -156,13 +147,8 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		Timestamp:  time.Unix(ts, 0),
 	}
 
-	// persist to store
-	if err := dc.Db.Create(&newDoc).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, documentCreateResponse{
-			Status: errors.Wrap(err, ErrDocCreateFailed.Error()).Error(),
-		})
-		return
-	}
+	// put to write chan
+	dc.WriteRowChan <- &newDoc
 
 	c.JSON(http.StatusCreated, documentCreateResponse{
 		Id:     &newDoc.ID,
@@ -170,14 +156,14 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	})
 
 	// cache result
-	_ = cache.Cache.Set(newDoc.ID.String(), newDoc, 1)
+	_ = cache.ReadCache.Set(newDoc.ID.String(), newDoc, 1)
 }
 
 func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 	var doc models.Document
 
 	// check if cached
-	d, ok := cache.Cache.Get(id.String())
+	d, ok := cache.ReadCache.Get(id.String())
 	if ok {
 		doc = d.(models.Document)
 	} else { // fetch from DB
@@ -186,7 +172,7 @@ func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 			return nil, err
 		}
 		// cache result
-		_ = cache.Cache.Set(doc.ID.String(), doc, 1)
+		_ = cache.ReadCache.Set(doc.ID.String(), doc, 1)
 	}
 
 	return &doc, nil

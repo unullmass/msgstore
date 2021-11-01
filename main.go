@@ -40,11 +40,39 @@ func checkVarFound(myvar *string, paramName string) bool {
 	return true
 }
 
+func FlushAllInsertsToDB(db *gorm.DB, insertChan chan *models.Document, quit chan struct{}) {
+	retryChan := make(chan *models.Document)
+
+	for {
+		select {
+		case d := <-insertChan:
+			if err := db.Create(d).Error; err != nil {
+				// requeue for insertion
+				retryChan <- d
+			}
+		case d := <-retryChan:
+			if err := db.Create(d).Error; err != nil {
+				log.Println("Error inserting Document ", d.ID)
+			}
+		case <-quit:
+			// flush all data
+			for d := range insertChan {
+				if err := db.Create(d).Error; err != nil {
+					log.Println("Error inserting Document ", d.ID)
+				}
+			}
+			// close the insert channel
+			close(insertChan)
+			return
+		}
+	}
+}
+
 func main() {
 	var (
 		dbHost, dbUser, dbPass, dbSchema, dbPort string
 	)
-	defer cache.Cache.Clear()
+	defer cache.ReadCache.Clear()
 
 	if !checkVarFound(&dbHost, constants.DbHostEnv) ||
 		!checkVarFound(&dbUser, constants.DbUserEnv) ||
@@ -75,6 +103,10 @@ func main() {
 	// init models
 	db.AutoMigrate(models.Document{}, models.Attribute{})
 
+	ic := make(chan *models.Document)
+	quit := make(chan struct{})
+	go FlushAllInsertsToDB(db, ic, quit)
+
 	r := gin.New()
 
 	// setup logging middleware
@@ -96,5 +128,5 @@ func main() {
 	r.Use(gin.Recovery())
 	handlers.SetRoutes(r, db)
 	r.Run()
+	close(quit)
 }
-
