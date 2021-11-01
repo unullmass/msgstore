@@ -11,8 +11,6 @@ import (
 	"github.com/unullmass/msg-store/constants"
 	"github.com/unullmass/msg-store/models"
 
-	"context"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
@@ -113,8 +111,7 @@ func (dc documentCreateRequest) IsValid() error {
 }
 
 type DocumentController struct {
-	Ctx context.Context
-	Db  *gorm.DB
+	Db *gorm.DB
 }
 
 func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
@@ -134,7 +131,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := RetrieveDocument(dc.Ctx, dcReq.Id, dc.Db)
+	_, err := RetrieveDocument(dcReq.Id, dc.Db)
 	// we need to change the UUID since to prevent overwrite
 	if err == nil {
 		dcReq.Id = uuid.New()
@@ -173,15 +170,15 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	})
 
 	// cache result
-	_ = cache.Cache.Set(dc.Ctx, newDoc.ID, newDoc, nil)
+	_ = cache.Cache.Set(newDoc.ID.String(), newDoc, 1)
 }
 
-func RetrieveDocument(ctx context.Context, id uuid.UUID, db *gorm.DB) (*models.Document, error) {
+func RetrieveDocument(id uuid.UUID, db *gorm.DB) (*models.Document, error) {
 	var doc models.Document
 
 	// check if cached
-	d, err := cache.Cache.Get(ctx, id)
-	if err == nil {
+	d, ok := cache.Cache.Get(id.String())
+	if ok {
 		doc = d.(models.Document)
 	} else { // fetch from DB
 		err := db.Preload("Attributes").First(&doc, "id = ?", id).Error
@@ -189,7 +186,7 @@ func RetrieveDocument(ctx context.Context, id uuid.UUID, db *gorm.DB) (*models.D
 			return nil, err
 		}
 		// cache result
-		_ = cache.Cache.Set(ctx, doc.ID, doc, nil)
+		_ = cache.Cache.Set(doc.ID.String(), doc, 1)
 	}
 
 	return &doc, nil
@@ -205,7 +202,7 @@ func (dc *DocumentController) RetrieveDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	doc, err := RetrieveDocument(dc.Ctx, id, dc.Db)
+	doc, err := RetrieveDocument(id, dc.Db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, retrieveDocumentResponse{
 			Status: ErrDocNotFound.Error(),

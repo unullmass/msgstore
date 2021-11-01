@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -21,10 +20,9 @@ var (
 	dc *DocumentController
 )
 
-func setDocRoutes(ctx context.Context, r *gin.Engine, db *gorm.DB) {
+func setDocRoutes(r *gin.Engine, db *gorm.DB) {
 	dc = &DocumentController{
-		Ctx: ctx,
-		Db:  db,
+		Db: db,
 	}
 	r.POST(createDocumentPath, dc.NewDocumentHandler)
 	r.GET(fullSearchPath, dc.SearchDocumentHandler)
@@ -32,6 +30,6 @@ func setDocRoutes(ctx context.Context, r *gin.Engine, db *gorm.DB) {
 }
 
 // SetRoutes sets routes for all backend APIs
-func SetRoutes(ctx context.Context, r *gin.Engine, db *gorm.DB) {
-	setDocRoutes(ctx, r, db)
+func SetRoutes(r *gin.Engine, db *gorm.DB) {
+	setDocRoutes(r, db)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -34,21 +33,18 @@ const (
 func checkVarFound(myvar *string, paramName string) bool {
 	val, isFound := os.LookupEnv(paramName)
 	if !isFound || strings.TrimSpace(val) == "" {
-		log.Default().Printf("%s is unset", paramName)
+		fmt.Printf("%s is unset", paramName)
 		return false
 	}
 	*myvar = val
 	return true
 }
 
-var ctx context.Context
-
 func main() {
 	var (
 		dbHost, dbUser, dbPass, dbSchema, dbPort string
 	)
-	ctx = context.Background()
-	defer cache.Cache.Clear(ctx)
+	defer cache.Cache.Clear()
 
 	if !checkVarFound(&dbHost, constants.DbHostEnv) ||
 		!checkVarFound(&dbUser, constants.DbUserEnv) ||
@@ -98,6 +94,7 @@ func main() {
 		)
 	}))
 	r.Use(gin.Recovery())
-	handlers.SetRoutes(ctx, r, db)
+	handlers.SetRoutes(r, db)
 	r.Run()
 }
+
