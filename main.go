@@ -73,7 +73,7 @@ func main() {
 	//db.DB().SetMaxIdleConns(500)
 	//db.DB().SetMaxOpenConns(1000)
 
-	db.LogMode(true)
+	//db.LogMode(true)
 
 	defer db.Close()
 	// init models

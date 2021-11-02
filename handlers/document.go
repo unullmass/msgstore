@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -60,6 +61,7 @@ var (
 	ErrDcrParseFailed    = errors.New("document create request parse failed")
 	CreateSuccess        = "created"
 	StatusOk             = "ok"
+	mtx                  sync.RWMutex
 )
 
 const (
@@ -129,7 +131,9 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 		return
 	}
 
+	mtx.RLock()
 	_, err = RetrieveDocument(dcReq.Id, dc.Db)
+	defer mtx.RUnlock()
 	// we need to change the UUID since to prevent overwrite
 	if err == nil {
 		dcReq.Id = uuid.New()
