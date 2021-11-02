@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"github.com/unullmass/msg-store/constants"
-	"github.com/unullmass/msg-store/models"
 )
 
 var (
@@ -16,14 +15,11 @@ var (
 	// searchByValue      = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
 	// searchByKeyValue   = fmt.Sprintf("%s/%s/:%s", constants.TsPath)
 	documentPath = fmt.Sprintf("%s/%s/:%s", constants.RootPrefix, constants.DocPath, constants.DocIdPath)
-
-	dc *DocumentController
 )
 
-func setDocRoutes(r *gin.Engine, db *gorm.DB, wrc *chan *models.Document) {
-	dc = &DocumentController{
-		Db:           db,
-		WriteRowChan: wrc,
+func setDocRoutes(r *gin.Engine, db *gorm.DB) {
+	dc := &DocumentController{
+		Db: db,
 	}
 	r.PUT(documentPath, dc.NewDocumentHandler)
 	r.GET(fullSearchPath, dc.SearchDocumentHandler)
@@ -31,6 +27,6 @@ func setDocRoutes(r *gin.Engine, db *gorm.DB, wrc *chan *models.Document) {
 }
 
 // SetRoutes sets routes for all backend APIs
-func SetRoutes(r *gin.Engine, db *gorm.DB, wrc *chan *models.Document) {
-	setDocRoutes(r, db, wrc)
+func SetRoutes(r *gin.Engine, db *gorm.DB) {
+	setDocRoutes(r, db)
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/unullmass/msg-store/cache"
 	"github.com/unullmass/msg-store/constants"
+	"github.com/unullmass/msg-store/docqueue"
 	"github.com/unullmass/msg-store/models"
 
 	"github.com/gin-gonic/gin"
@@ -97,8 +98,7 @@ func (dc documentCreateRequest) IsValid() error {
 }
 
 type DocumentController struct {
-	Db           *gorm.DB
-	WriteRowChan *chan *models.Document
+	Db *gorm.DB
 }
 
 func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
@@ -155,7 +155,7 @@ func (dc *DocumentController) NewDocumentHandler(c *gin.Context) {
 	}
 
 	// put to write chan
-	*dc.WriteRowChan <- &newDoc
+	docqueue.InsertChan <- newDoc
 
 	c.JSON(http.StatusCreated, documentCreateResponse{
 		Id:     &newDoc.ID,

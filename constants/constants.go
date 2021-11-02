@@ -15,7 +15,7 @@ const (
 //
 const (
 	DefaultMaxRecordsReturn = 500
-	DefaultCacheTimeMins = 5
+	DefaultCacheTimeMins    = 5
 )
 
 // DB

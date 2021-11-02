@@ -12,6 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/unullmass/msg-store/cache"
+	"github.com/unullmass/msg-store/docqueue"
+
 	"github.com/unullmass/msg-store/constants"
 	"github.com/unullmass/msg-store/handlers"
 	"github.com/unullmass/msg-store/models"
@@ -40,34 +42,6 @@ func checkVarFound(myvar *string, paramName string) bool {
 	}
 	*myvar = val
 	return true
-}
-
-func FlushAllInsertsToDB(db *gorm.DB, insertChan chan *models.Document, quit chan os.Signal) {
-	retryChan := make(chan *models.Document)
-
-	for {
-		select {
-		case d := <-insertChan:
-			if err := db.Create(d).Error; err != nil {
-				// requeue for insertion
-				retryChan <- d
-			}
-		case d := <-retryChan:
-			if err := db.Create(d).Error; err != nil {
-				log.Println("Error inserting Document ", d.ID)
-			}
-		case <-quit:
-			// flush all data
-			for d := range insertChan {
-				if err := db.Create(d).Error; err != nil {
-					log.Println("Error inserting Document ", d.ID)
-				}
-			}
-			// close the insert channel
-			close(insertChan)
-			return
-		}
-	}
 }
 
 func main() {
@@ -105,9 +79,8 @@ func main() {
 	// init models
 	db.AutoMigrate(models.Document{}, models.Attribute{})
 
-	ic := make(chan *models.Document)
-	quit := make(chan os.Signal)
-	go FlushAllInsertsToDB(db, ic, quit)
+	// pass db to writer
+	go docqueue.InitWriter(db)
 
 	r := gin.New()
 
@@ -128,10 +101,8 @@ func main() {
 		)
 	}))
 	r.Use(gin.Recovery())
-	handlers.SetRoutes(r, db, &ic)
+	handlers.SetRoutes(r, db)
 	r.Run()
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	signal.Notify(docqueue.QuitChan, syscall.SIGINT, syscall.SIGTERM)
 
-	close(quit)
 }
